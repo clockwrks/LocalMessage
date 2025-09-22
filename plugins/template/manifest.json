@@ -1,0 +1,14 @@
+{
+    "name": "Fake MEssages",
+    "description": "Can Fake Any Message to Any User locally",
+    "authors": [
+        {
+            "name": "clockwrks",
+            "id": "378986339007201290"
+        }
+    ],
+    "main": "src/index.tsx",
+    "vendetta": {
+        "icon": "ic_badge_staff"
+    }
+}
