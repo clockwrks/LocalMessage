@@ -4,13 +4,12 @@ import { Forms } from '@vendetta/ui/components'
 import { storage } from '@vendetta/plugin'
 
 const { FormSection, FormInput, FormRow } = Forms
+const userStore = findByProps('getCurrentUser', 'getUser')
 
-function spawnFakeMessage(channelId: string, authorId: string, content: string) {
-    const userStore = findByProps('getCurrentUser', 'getUser')
+function spawnFakeMessage(channelId, authorId, content, id) {
     const user = userStore.getUser(authorId)
-
     const fakeMessage = {
-        id: String(Date.now()),
+        id: id || String(Date.now()),
         type: 0,
         channel_id: channelId,
         author: {
@@ -29,8 +28,8 @@ function spawnFakeMessage(channelId: string, authorId: string, content: string) 
         embeds: [],
         timestamp: new Date().toISOString(),
         state: 'SENT',
+        fake: true,
     }
-
     FluxDispatcher.dispatch({
         type: 'MESSAGE_CREATE',
         channelId,
@@ -38,8 +37,29 @@ function spawnFakeMessage(channelId: string, authorId: string, content: string) 
     })
 }
 
+function persistSavedMessages(saved) {
+    storage.savedMessages = saved
+    storage._lastUpdate = Date.now()
+}
+
+function saveMessage(channelId, userId, content) {
+    const saved = storage.savedMessages || []
+    const id = String(Date.now())
+    saved.push({ id, channelId, userId, content })
+    persistSavedMessages(saved)
+}
+
+function loadSavedMessages() {
+    const saved = storage.savedMessages || []
+    saved.forEach(msg => {
+        spawnFakeMessage(msg.channelId, msg.userId, msg.content, msg.id)
+    })
+}
+
 export default {
-    onLoad() {},
+    onLoad() {
+        setTimeout(loadSavedMessages, 1000)
+    },
     onUnload() {},
     settings: () => (
         <FormSection title='Fake Message'>
@@ -61,11 +81,22 @@ export default {
                 value={storage.message ?? ''}
                 onChange={v => (storage.message = v)}
             />
+            <FormInput
+                title='Delay (seconds)'
+                placeholder='enter delay in seconds'
+                value={storage.delay ?? ''}
+                onChange={v => (storage.delay = v)}
+            />
             <FormRow
                 label='Send Fake Message'
                 onPress={() => {
-                    if (storage.channelId && storage.userId && storage.message) {
-                        spawnFakeMessage(storage.channelId, storage.userId, storage.message)
+                    const { channelId, userId, message, delay } = storage
+                    if (channelId && userId && message) {
+                        const ms = parseInt(delay || '0') * 1000
+                        setTimeout(() => {
+                            spawnFakeMessage(channelId, userId, message)
+                            saveMessage(channelId, userId, message)
+                        }, ms)
                     }
                 }}
             />
